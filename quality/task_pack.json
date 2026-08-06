@@ -1,0 +1,402 @@
+[
+  {
+    "id": "ce_01",
+    "category": "code_exec",
+    "prompt": "Write a Python function `fibonacci(n: int) -> int` that returns the nth Fibonacci number (0-indexed, so fibonacci(0)==0, fibonacci(1)==1, fibonacci(2)==1, fibonacci(10)==55). Use iteration, not recursion.",
+    "expected_output": "def fibonacci(n: int) -> int:\n    if n <= 0:\n        return 0\n    if n == 1:\n        return 1\n    a, b = 0, 1\n    for _ in range(2, n + 1):\n        a, b = b, a + b\n    return b\n",
+    "check_type": "code_exec",
+    "unit_tests": "assert fibonacci(0) == 0\nassert fibonacci(1) == 1\nassert fibonacci(2) == 1\nassert fibonacci(5) == 5\nassert fibonacci(10) == 55\nassert fibonacci(7) == 13\n"
+  },
+  {
+    "id": "ce_02",
+    "category": "code_exec",
+    "prompt": "Write a Python function `binary_search(arr: list, target: int) -> int` that performs binary search on a sorted list and returns the index of target, or -1 if not found.",
+    "expected_output": "def binary_search(arr: list, target: int) -> int:\n    lo, hi = 0, len(arr) - 1\n    while lo <= hi:\n        mid = (lo + hi) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            lo = mid + 1\n        else:\n            hi = mid - 1\n    return -1\n",
+    "check_type": "code_exec",
+    "unit_tests": "assert binary_search([1, 3, 5, 7, 9], 5) == 2\nassert binary_search([1, 3, 5, 7, 9], 1) == 0\nassert binary_search([1, 3, 5, 7, 9], 9) == 4\nassert binary_search([1, 3, 5, 7, 9], 4) == -1\nassert binary_search([], 1) == -1\nassert binary_search([42], 42) == 0\n"
+  },
+  {
+    "id": "ce_03",
+    "category": "code_exec",
+    "prompt": "Write a Python function `count_vowels(s: str) -> int` that returns the count of vowel characters (a, e, i, o, u) in the string, case-insensitive.",
+    "expected_output": "def count_vowels(s: str) -> int:\n    return sum(1 for c in s.lower() if c in 'aeiou')\n",
+    "check_type": "code_exec",
+    "unit_tests": "assert count_vowels('hello') == 2\nassert count_vowels('rhythm') == 0\nassert count_vowels('aeiou') == 5\nassert count_vowels('') == 0\nassert count_vowels('Hello World') == 3\nassert count_vowels('AEIOU') == 5\n"
+  },
+  {
+    "id": "ce_04",
+    "category": "code_exec",
+    "prompt": "Write a Python function `flatten_nested_list(lst: list) -> list` that recursively flattens an arbitrarily nested list into a single flat list.",
+    "expected_output": "def flatten_nested_list(lst: list) -> list:\n    result = []\n    for item in lst:\n        if isinstance(item, list):\n            result.extend(flatten_nested_list(item))\n        else:\n            result.append(item)\n    return result\n",
+    "check_type": "code_exec",
+    "unit_tests": "assert flatten_nested_list([1, [2, 3], [4, [5, 6]]]) == [1, 2, 3, 4, 5, 6]\nassert flatten_nested_list([]) == []\nassert flatten_nested_list([1, 2, 3]) == [1, 2, 3]\nassert flatten_nested_list([[1, [2]], [3]]) == [1, 2, 3]\nassert flatten_nested_list([[[[]]]]) == []\n"
+  },
+  {
+    "id": "ce_05",
+    "category": "code_exec",
+    "prompt": "Write a Python function `reverse_words(s: str) -> str` that reverses the order of words in a string. Strip leading/trailing spaces and collapse internal whitespace.",
+    "expected_output": "def reverse_words(s: str) -> str:\n    return ' '.join(reversed(s.split()))\n",
+    "check_type": "code_exec",
+    "unit_tests": "assert reverse_words('hello world') == 'world hello'\nassert reverse_words('  spaces  ') == 'spaces'\nassert reverse_words('one') == 'one'\nassert reverse_words('a b c') == 'c b a'\nassert reverse_words('') == ''\n"
+  },
+  {
+    "id": "ce_06",
+    "category": "code_exec",
+    "prompt": "Write a Python function `is_palindrome(s: str) -> bool` that returns True if the string reads the same forwards and backwards, False otherwise. Treat the input literally (no case folding or stripping).",
+    "expected_output": "def is_palindrome(s: str) -> bool:\n    return s == s[::-1]\n",
+    "check_type": "code_exec",
+    "unit_tests": "assert is_palindrome('racecar') == True\nassert is_palindrome('hello') == False\nassert is_palindrome('madam') == True\nassert is_palindrome('') == True\nassert is_palindrome('a') == True\nassert is_palindrome('ab') == False\n"
+  },
+  {
+    "id": "ce_07",
+    "category": "code_exec",
+    "prompt": "Write a Python function `merge_sorted_lists(l1: list, l2: list) -> list` that merges two sorted lists into one sorted list without using the built-in sort.",
+    "expected_output": "def merge_sorted_lists(l1: list, l2: list) -> list:\n    result, i, j = [], 0, 0\n    while i < len(l1) and j < len(l2):\n        if l1[i] <= l2[j]:\n            result.append(l1[i]); i += 1\n        else:\n            result.append(l2[j]); j += 1\n    return result + l1[i:] + l2[j:]\n",
+    "check_type": "code_exec",
+    "unit_tests": "assert merge_sorted_lists([1, 3, 5], [2, 4, 6]) == [1, 2, 3, 4, 5, 6]\nassert merge_sorted_lists([], [1, 2]) == [1, 2]\nassert merge_sorted_lists([1], []) == [1]\nassert merge_sorted_lists([], []) == []\nassert merge_sorted_lists([1, 1], [1, 2]) == [1, 1, 1, 2]\n"
+  },
+  {
+    "id": "ce_08",
+    "category": "code_exec",
+    "prompt": "Write a Python function `find_duplicates(lst: list) -> list` that returns a list of all elements that appear more than once in the input list. Order of the returned list does not matter.",
+    "expected_output": "def find_duplicates(lst: list) -> list:\n    seen, dupes = set(), set()\n    for x in lst:\n        if x in seen:\n            dupes.add(x)\n        else:\n            seen.add(x)\n    return list(dupes)\n",
+    "check_type": "code_exec",
+    "unit_tests": "assert sorted(find_duplicates([1, 2, 3, 2, 4, 3])) == [2, 3]\nassert find_duplicates([1, 2, 3]) == []\nassert sorted(find_duplicates([5, 5, 5])) == [5]\nassert sorted(find_duplicates([1, 1, 2, 2, 3, 3])) == [1, 2, 3]\nassert find_duplicates([]) == []\n"
+  },
+  {
+    "id": "ce_09",
+    "category": "code_exec",
+    "prompt": "Write a Python function `group_by(lst: list, key_fn) -> dict` that groups items in lst by the value returned by key_fn(item), returning a dict mapping each key to the list of items with that key.",
+    "expected_output": "def group_by(lst: list, key_fn) -> dict:\n    result = {}\n    for item in lst:\n        k = key_fn(item)\n        result.setdefault(k, []).append(item)\n    return result\n",
+    "check_type": "code_exec",
+    "unit_tests": "r = group_by([1, 2, 3, 4, 5, 6], lambda x: x % 2)\nassert sorted(r[0]) == [2, 4, 6]\nassert sorted(r[1]) == [1, 3, 5]\nr2 = group_by(['cat', 'dog', 'cow', 'duck'], lambda s: s[0])\nassert sorted(r2['c']) == ['cat', 'cow']\nassert sorted(r2['d']) == ['dog', 'duck']\nassert group_by([], lambda x: x) == {}\n"
+  },
+  {
+    "id": "ce_10",
+    "category": "code_exec",
+    "prompt": "Write a Python function `parse_date_string(date_str: str) -> tuple` that parses a date string in 'YYYY-MM-DD' format and returns a tuple (year, month, day) of integers.",
+    "expected_output": "def parse_date_string(date_str: str) -> tuple:\n    parts = date_str.split('-')\n    return (int(parts[0]), int(parts[1]), int(parts[2]))\n",
+    "check_type": "code_exec",
+    "unit_tests": "assert parse_date_string('2024-01-15') == (2024, 1, 15)\nassert parse_date_string('1999-12-31') == (1999, 12, 31)\nassert parse_date_string('2000-06-01') == (2000, 6, 1)\nassert parse_date_string('2023-07-04') == (2023, 7, 4)\n"
+  },
+  {
+    "id": "ce_11",
+    "category": "code_exec",
+    "prompt": "Write a Python function `longest_common_prefix(strs: list[str]) -> str` that returns the longest string prefix shared by all strings in the list. Return '' for empty list or no common prefix.",
+    "expected_output": "def longest_common_prefix(strs: list) -> str:\n    if not strs:\n        return ''\n    prefix = strs[0]\n    for s in strs[1:]:\n        while not s.startswith(prefix):\n            prefix = prefix[:-1]\n            if not prefix:\n                return ''\n    return prefix\n",
+    "check_type": "code_exec",
+    "unit_tests": "assert longest_common_prefix(['flower', 'flow', 'flight']) == 'fl'\nassert longest_common_prefix(['dog', 'racecar', 'car']) == ''\nassert longest_common_prefix(['interview', 'interact', 'interface']) == 'inter'\nassert longest_common_prefix([]) == ''\nassert longest_common_prefix(['single']) == 'single'\nassert longest_common_prefix(['ab', 'a']) == 'a'\n"
+  },
+  {
+    "id": "ce_12",
+    "category": "code_exec",
+    "prompt": "Write a Python function `two_sum(nums: list[int], target: int) -> list[int]` that returns the indices [i, j] of the two numbers in nums that add up to target. Assume exactly one solution exists.",
+    "expected_output": "def two_sum(nums: list, target: int) -> list:\n    seen = {}\n    for i, n in enumerate(nums):\n        complement = target - n\n        if complement in seen:\n            return [seen[complement], i]\n        seen[n] = i\n    return []\n",
+    "check_type": "code_exec",
+    "unit_tests": "assert sorted(two_sum([2, 7, 11, 15], 9)) == [0, 1]\nassert sorted(two_sum([3, 2, 4], 6)) == [1, 2]\nassert sorted(two_sum([3, 3], 6)) == [0, 1]\nassert sorted(two_sum([1, 4, 7, 10], 11)) == [1, 2]\n"
+  },
+  {
+    "id": "ce_13",
+    "category": "code_exec",
+    "prompt": "Write a Python function `valid_parentheses(s: str) -> bool` that returns True if every opening bracket has a matching closing bracket in correct order. Supports '(', ')', '[', ']', '{', '}'.",
+    "expected_output": "def valid_parentheses(s: str) -> bool:\n    stack = []\n    pairs = {')': '(', ']': '[', '}': '{'}\n    for c in s:\n        if c in '([{':\n            stack.append(c)\n        elif c in ')]}':\n            if not stack or stack[-1] != pairs[c]:\n                return False\n            stack.pop()\n    return not stack\n",
+    "check_type": "code_exec",
+    "unit_tests": "assert valid_parentheses('()') == True\nassert valid_parentheses('()[]{}') == True\nassert valid_parentheses('(]') == False\nassert valid_parentheses('([)]') == False\nassert valid_parentheses('{[]}') == True\nassert valid_parentheses('') == True\nassert valid_parentheses('(') == False\n"
+  },
+  {
+    "id": "ce_14",
+    "category": "code_exec",
+    "prompt": "Write a Python function `rotate_matrix(matrix: list[list[int]]) -> list[list[int]]` that returns a new matrix that is the input rotated 90 degrees clockwise. Assume square input.",
+    "expected_output": "def rotate_matrix(matrix: list) -> list:\n    n = len(matrix)\n    return [[matrix[n - 1 - j][i] for j in range(n)] for i in range(n)]\n",
+    "check_type": "code_exec",
+    "unit_tests": "assert rotate_matrix([[1, 2, 3], [4, 5, 6], [7, 8, 9]]) == [[7, 4, 1], [8, 5, 2], [9, 6, 3]]\nassert rotate_matrix([[1, 2], [3, 4]]) == [[3, 1], [4, 2]]\nassert rotate_matrix([[5]]) == [[5]]\n"
+  },
+  {
+    "id": "ce_15",
+    "category": "code_exec",
+    "prompt": "Write a Python function `roman_to_integer(s: str) -> int` that converts a Roman numeral string to an integer. Valid symbols: I, V, X, L, C, D, M.",
+    "expected_output": "def roman_to_integer(s: str) -> int:\n    vals = {'I': 1, 'V': 5, 'X': 10, 'L': 50, 'C': 100, 'D': 500, 'M': 1000}\n    result = 0\n    for i in range(len(s)):\n        if i + 1 < len(s) and vals[s[i]] < vals[s[i + 1]]:\n            result -= vals[s[i]]\n        else:\n            result += vals[s[i]]\n    return result\n",
+    "check_type": "code_exec",
+    "unit_tests": "assert roman_to_integer('III') == 3\nassert roman_to_integer('IV') == 4\nassert roman_to_integer('IX') == 9\nassert roman_to_integer('XLII') == 42\nassert roman_to_integer('MCMXCIV') == 1994\nassert roman_to_integer('LVIII') == 58\n"
+  },
+  {
+    "id": "ce_16",
+    "category": "code_exec",
+    "prompt": "Write a Python function `word_frequency(text: str) -> dict` that returns a dictionary mapping each word to how many times it appears in the text. Split on whitespace.",
+    "expected_output": "def word_frequency(text: str) -> dict:\n    result = {}\n    for word in text.split():\n        result[word] = result.get(word, 0) + 1\n    return result\n",
+    "check_type": "code_exec",
+    "unit_tests": "r = word_frequency('the cat sat on the mat')\nassert r['the'] == 2\nassert r['cat'] == 1\nassert r['mat'] == 1\nassert word_frequency('') == {}\nr2 = word_frequency('hello hello hello')\nassert r2['hello'] == 3\nassert len(r2) == 1\n"
+  },
+  {
+    "id": "ce_17",
+    "category": "code_exec",
+    "prompt": "Write a Python function `run_length_encode(s: str) -> str` that encodes a string using run-length encoding. Each consecutive group of identical characters is replaced by the character followed by its count (e.g. 'aabbbcc' -> 'a2b3c2').",
+    "expected_output": "def run_length_encode(s: str) -> str:\n    if not s:\n        return ''\n    result, count = '', 1\n    for i in range(1, len(s)):\n        if s[i] == s[i - 1]:\n            count += 1\n        else:\n            result += s[i - 1] + str(count)\n            count = 1\n    return result + s[-1] + str(count)\n",
+    "check_type": "code_exec",
+    "unit_tests": "assert run_length_encode('aabbbcc') == 'a2b3c2'\nassert run_length_encode('abcd') == 'a1b1c1d1'\nassert run_length_encode('') == ''\nassert run_length_encode('aaaa') == 'a4'\nassert run_length_encode('a') == 'a1'\n"
+  },
+  {
+    "id": "ce_18",
+    "category": "code_exec",
+    "prompt": "Write a Python function `sum_nested_dict(d: dict) -> float` that recursively sums all numeric (int or float) values in an arbitrarily nested dictionary. Non-numeric, non-dict values are ignored.",
+    "expected_output": "def sum_nested_dict(d: dict) -> float:\n    total = 0\n    for v in d.values():\n        if isinstance(v, dict):\n            total += sum_nested_dict(v)\n        elif isinstance(v, (int, float)):\n            total += v\n    return total\n",
+    "check_type": "code_exec",
+    "unit_tests": "assert sum_nested_dict({'a': 1, 'b': 2}) == 3\nassert sum_nested_dict({'a': {'b': 1, 'c': 2}, 'd': 3}) == 6\nassert sum_nested_dict({}) == 0\nassert sum_nested_dict({'x': {'y': {'z': 5}}}) == 5\nassert sum_nested_dict({'a': 1, 'b': {'c': 2, 'd': {'e': 3}}}) == 6\n"
+  },
+  {
+    "id": "ce_19",
+    "category": "code_exec",
+    "prompt": "Write a Python function `transpose_matrix(matrix: list[list]) -> list[list]` that returns the transpose of a 2D matrix (rows become columns). The input may be non-square.",
+    "expected_output": "def transpose_matrix(matrix: list) -> list:\n    if not matrix:\n        return []\n    return [[matrix[r][c] for r in range(len(matrix))] for c in range(len(matrix[0]))]\n",
+    "check_type": "code_exec",
+    "unit_tests": "assert transpose_matrix([[1, 2, 3], [4, 5, 6]]) == [[1, 4], [2, 5], [3, 6]]\nassert transpose_matrix([[1, 2], [3, 4]]) == [[1, 3], [2, 4]]\nassert transpose_matrix([[1]]) == [[1]]\nassert transpose_matrix([]) == []\n"
+  },
+  {
+    "id": "ce_20",
+    "category": "code_exec",
+    "prompt": "Write a Python function `anagram_check(s1: str, s2: str) -> bool` that returns True if s1 and s2 are anagrams of each other (same characters, same frequencies), case-insensitive.",
+    "expected_output": "def anagram_check(s1: str, s2: str) -> bool:\n    return sorted(s1.lower()) == sorted(s2.lower())\n",
+    "check_type": "code_exec",
+    "unit_tests": "assert anagram_check('listen', 'silent') == True\nassert anagram_check('hello', 'world') == False\nassert anagram_check('triangle', 'integral') == True\nassert anagram_check('', '') == True\nassert anagram_check('rat', 'car') == False\nassert anagram_check('abcde', 'edcba') == True\nassert anagram_check('Listen', 'Silent') == True\n"
+  },
+  {
+    "id": "fc_01",
+    "category": "function_call",
+    "prompt": "What's the weather like in Paris right now? I prefer temperatures in Celsius.",
+    "expected_output": "{\"name\": \"get_weather\", \"arguments\": {\"location\": \"Paris\", \"unit\": \"celsius\"}}",
+    "check_type": "function_call",
+    "unit_tests": null
+  },
+  {
+    "id": "fc_02",
+    "category": "function_call",
+    "prompt": "Search for files related to the quarterly report in the /documents directory.",
+    "expected_output": "{\"name\": \"search_files\", \"arguments\": {\"query\": \"quarterly report\", \"directory\": \"/documents\"}}",
+    "check_type": "function_call",
+    "unit_tests": null
+  },
+  {
+    "id": "fc_03",
+    "category": "function_call",
+    "prompt": "Send an email to alice@example.com with the subject 'Meeting Tomorrow' and the body 'Don't forget our meeting at 10am.'",
+    "expected_output": "{\"name\": \"send_email\", \"arguments\": {\"to\": \"alice@example.com\", \"subject\": \"Meeting Tomorrow\", \"body\": \"Don't forget our meeting at 10am.\"}}",
+    "check_type": "function_call",
+    "unit_tests": null
+  },
+  {
+    "id": "fc_04",
+    "category": "function_call",
+    "prompt": "Create a calendar event called 'Team Standup' on January 15, 2025 at 09:00 for 30 minutes.",
+    "expected_output": "{\"name\": \"create_event\", \"arguments\": {\"title\": \"Team Standup\", \"date\": \"2025-01-15\", \"time\": \"09:00\", \"duration_minutes\": 30}}",
+    "check_type": "function_call",
+    "unit_tests": null
+  },
+  {
+    "id": "fc_05",
+    "category": "function_call",
+    "prompt": "Translate the text 'Hello, how are you?' into French.",
+    "expected_output": "{\"name\": \"translate_text\", \"arguments\": {\"text\": \"Hello, how are you?\", \"target_language\": \"French\"}}",
+    "check_type": "function_call",
+    "unit_tests": null
+  },
+  {
+    "id": "fc_06",
+    "category": "function_call",
+    "prompt": "Calculate the distance from New York, NY to Los Angeles, CA in miles.",
+    "expected_output": "{\"name\": \"calculate_distance\", \"arguments\": {\"origin\": \"New York, NY\", \"destination\": \"Los Angeles, CA\", \"unit\": \"miles\"}}",
+    "check_type": "function_call",
+    "unit_tests": null
+  },
+  {
+    "id": "fc_07",
+    "category": "function_call",
+    "prompt": "What is the current stock price for Apple? The ticker symbol is AAPL.",
+    "expected_output": "{\"name\": \"get_stock_price\", \"arguments\": {\"symbol\": \"AAPL\"}}",
+    "check_type": "function_call",
+    "unit_tests": null
+  },
+  {
+    "id": "fc_08",
+    "category": "function_call",
+    "prompt": "Set a reminder to 'Call dentist' for January 20, 2025 at 14:00.",
+    "expected_output": "{\"name\": \"set_reminder\", \"arguments\": {\"message\": \"Call dentist\", \"time\": \"14:00\", \"date\": \"2025-01-20\"}}",
+    "check_type": "function_call",
+    "unit_tests": null
+  },
+  {
+    "id": "fc_09",
+    "category": "function_call",
+    "prompt": "Book a table for 4 at La Maison restaurant on January 18, 2025 at 7:30 PM.",
+    "expected_output": "{\"name\": \"book_restaurant\", \"arguments\": {\"restaurant\": \"La Maison\", \"date\": \"2025-01-18\", \"time\": \"19:30\", \"party_size\": 4}}",
+    "check_type": "function_call",
+    "unit_tests": null
+  },
+  {
+    "id": "fc_10",
+    "category": "function_call",
+    "prompt": "Play Bohemian Rhapsody by Queen.",
+    "expected_output": "{\"name\": \"play_music\", \"arguments\": {\"song\": \"Bohemian Rhapsody\", \"artist\": \"Queen\"}}",
+    "check_type": "function_call",
+    "unit_tests": null
+  },
+  {
+    "id": "fc_11",
+    "category": "function_call",
+    "prompt": "Convert 100 US dollars to Euros.",
+    "expected_output": "{\"name\": \"convert_currency\", \"arguments\": {\"amount\": 100, \"from_currency\": \"USD\", \"to_currency\": \"EUR\"}}",
+    "check_type": "function_call",
+    "unit_tests": null
+  },
+  {
+    "id": "fc_12",
+    "category": "function_call",
+    "prompt": "Get walking directions from Central Park, New York to Times Square, New York.",
+    "expected_output": "{\"name\": \"get_directions\", \"arguments\": {\"start\": \"Central Park, New York\", \"end\": \"Times Square, New York\", \"mode\": \"walking\"}}",
+    "check_type": "function_call",
+    "unit_tests": null
+  },
+  {
+    "id": "fc_13",
+    "category": "function_call",
+    "prompt": "Find the contact information for John Smith.",
+    "expected_output": "{\"name\": \"find_contact\", \"arguments\": {\"name\": \"John Smith\"}}",
+    "check_type": "function_call",
+    "unit_tests": null
+  },
+  {
+    "id": "fc_14",
+    "category": "function_call",
+    "prompt": "Create a playlist named 'Morning Run' with 20 pop songs.",
+    "expected_output": "{\"name\": \"create_playlist\", \"arguments\": {\"name\": \"Morning Run\", \"genre\": \"pop\", \"count\": 20}}",
+    "check_type": "function_call",
+    "unit_tests": null
+  },
+  {
+    "id": "fc_15",
+    "category": "function_call",
+    "prompt": "Set a weekday alarm for 7:30 AM every Monday through Friday.",
+    "expected_output": "{\"name\": \"set_alarm\", \"arguments\": {\"time\": \"07:30\", \"days\": [\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\"]}}",
+    "check_type": "function_call",
+    "unit_tests": null
+  },
+  {
+    "id": "fc_16",
+    "category": "function_call",
+    "prompt": "Fetch the top 5 technology news articles.",
+    "expected_output": "{\"name\": \"fetch_news\", \"arguments\": {\"topic\": \"technology\", \"count\": 5}}",
+    "check_type": "function_call",
+    "unit_tests": null
+  },
+  {
+    "id": "fc_17",
+    "category": "function_call",
+    "prompt": "Check the traffic conditions on I-95 North in Boston.",
+    "expected_output": "{\"name\": \"get_traffic\", \"arguments\": {\"route\": \"I-95 North\", \"city\": \"Boston\"}}",
+    "check_type": "function_call",
+    "unit_tests": null
+  },
+  {
+    "id": "fc_18",
+    "category": "function_call",
+    "prompt": "Run this Python code: print('Hello, World!')",
+    "expected_output": "{\"name\": \"run_code\", \"arguments\": {\"language\": \"python\", \"code\": \"print('Hello, World!')\"}}",
+    "check_type": "function_call",
+    "unit_tests": null
+  },
+  {
+    "id": "fc_19",
+    "category": "function_call",
+    "prompt": "Summarize the document with ID 'doc_2025_q4' in no more than 150 words.",
+    "expected_output": "{\"name\": \"summarize_document\", \"arguments\": {\"document_id\": \"doc_2025_q4\", \"max_words\": 150}}",
+    "check_type": "function_call",
+    "unit_tests": null
+  },
+  {
+    "id": "fc_20",
+    "category": "function_call",
+    "prompt": "Schedule a 60-minute meeting with alice@example.com and bob@example.com, preferably on January 22, 2025.",
+    "expected_output": "{\"name\": \"schedule_meeting\", \"arguments\": {\"participants\": [\"alice@example.com\", \"bob@example.com\"], \"duration_minutes\": 60, \"preferred_date\": \"2025-01-22\"}}",
+    "check_type": "function_call",
+    "unit_tests": null
+  },
+  {
+    "id": "em_01",
+    "category": "exact_match",
+    "prompt": "What is 17 multiplied by 23?",
+    "expected_output": "391",
+    "check_type": "exact_match",
+    "unit_tests": null
+  },
+  {
+    "id": "em_02",
+    "category": "exact_match",
+    "prompt": "What is the capital of Japan?",
+    "expected_output": "Tokyo",
+    "check_type": "exact_match",
+    "unit_tests": null
+  },
+  {
+    "id": "em_03",
+    "category": "exact_match",
+    "prompt": "What is the time complexity of binary search?",
+    "expected_output": "O(log n)",
+    "check_type": "exact_match",
+    "unit_tests": null
+  },
+  {
+    "id": "em_04",
+    "category": "exact_match",
+    "prompt": "What is 2 to the power of 10?",
+    "expected_output": "1024",
+    "check_type": "exact_match",
+    "unit_tests": null
+  },
+  {
+    "id": "em_05",
+    "category": "exact_match",
+    "prompt": "What is the square root of 144?",
+    "expected_output": "12",
+    "check_type": "exact_match",
+    "unit_tests": null
+  },
+  {
+    "id": "em_06",
+    "category": "exact_match",
+    "prompt": "How many days are in a leap year?",
+    "expected_output": "366",
+    "check_type": "exact_match",
+    "unit_tests": null
+  },
+  {
+    "id": "em_07",
+    "category": "exact_match",
+    "prompt": "How many planets are in our solar system?",
+    "expected_output": "8",
+    "check_type": "exact_match",
+    "unit_tests": null
+  },
+  {
+    "id": "em_08",
+    "category": "exact_match",
+    "prompt": "What is the boiling point of water at sea level in Celsius?",
+    "expected_output": "100",
+    "check_type": "exact_match",
+    "unit_tests": null
+  },
+  {
+    "id": "em_09",
+    "category": "exact_match",
+    "prompt": "What is the sum of the interior angles of a triangle in degrees?",
+    "expected_output": "180",
+    "check_type": "exact_match",
+    "unit_tests": null
+  },
+  {
+    "id": "em_10",
+    "category": "exact_match",
+    "prompt": "What is the atomic number of carbon?",
+    "expected_output": "6",
+    "check_type": "exact_match",
+    "unit_tests": null
+  }
+]

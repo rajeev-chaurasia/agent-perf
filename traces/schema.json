@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AgentPerfTrace",
+  "description": "Schema for agent performance traces",
+  "type": "object",
+  "required": ["trace_id", "schema_version", "sessions"],
+  "additionalProperties": false,
+  "properties": {
+    "trace_id": {
+      "type": "string"
+    },
+    "schema_version": {
+      "type": "integer",
+      "enum": [1]
+    },
+    "sessions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["session_id", "system_prompt_ref", "turns"],
+        "additionalProperties": false,
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "system_prompt_ref": {
+            "type": "string"
+          },
+          "turns": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "turn_id",
+                "role_sequence",
+                "content_ref",
+                "sampling",
+                "expects_tool_call",
+                "think_time_ms"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "turn_id": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "role_sequence": {
+                  "type": "string",
+                  "enum": ["user", "tool_result"]
+                },
+                "content_ref": {
+                  "type": "string"
+                },
+                "sampling": {
+                  "type": "object",
+                  "properties": {
+                    "temperature": {
+                      "type": "number"
+                    },
+                    "max_tokens": {
+                      "type": "integer"
+                    },
+                    "top_p": {
+                      "type": "number"
+                    }
+                  }
+                },
+                "expects_tool_call": {
+                  "type": "boolean"
+                },
+                "think_time_ms": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

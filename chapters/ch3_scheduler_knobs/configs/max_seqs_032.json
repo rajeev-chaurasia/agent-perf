@@ -1,0 +1,14 @@
+{
+  "framework": "vllm",
+  "model": "meta-llama/Llama-3.1-8B-Instruct",
+  "precision": "fp8",
+  "gpu_ids": [1],
+  "base_url": "http://localhost:8000",
+  "extra_args": {
+    "--enable-prefix-caching": "true",
+    "--enable-chunked-prefill": "false",
+    "--max-num-seqs": "32",
+    "--gpu-memory-utilization": "0.75",
+    "--max-model-len": "32768"
+  }
+}

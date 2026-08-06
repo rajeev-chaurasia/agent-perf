@@ -1,0 +1,11 @@
+{
+  "framework": "sglang",
+  "model": "meta-llama/Llama-3.1-8B-Instruct",
+  "precision": "bf16",
+  "gpu_ids": [1],
+  "base_url": "http://localhost:30000",
+  "extra_args": {
+    "--mem-fraction-static": "0.85",
+    "--context-length": "32768"
+  }
+}
