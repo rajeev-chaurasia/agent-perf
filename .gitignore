@@ -4,14 +4,28 @@ __pycache__/
 .env
 venv/
 .venv/
+.venv-vllm/
+.venv-sglang/
+.venv-trtllm/
 dist/
 build/
 *.egg-info/
 .ruff_cache/
 .pytest_cache/
-results/
-*.parquet
-*.png
+uv.lock
+models/
+quantized/
 *.pt
 *.safetensors
-quantized/
+
+# Chapter results (raw parquet + logs) -- use agentperf-report to regenerate plots
+chapters/*/results/**/*.parquet
+chapters/*/results/**/*.manifest.json
+chapters/*/results/**/warmup/
+chapters/*/run.log
+
+# Root-level scratch results
+results/
+
+# Docs images are kept
+!docs/images/*.png

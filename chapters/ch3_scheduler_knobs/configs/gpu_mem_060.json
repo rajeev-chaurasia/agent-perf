@@ -1,12 +1,14 @@
 {
   "framework": "vllm",
-  "model": "meta-llama/Llama-3.1-8B-Instruct",
+  "model": "models/llama-3.1-8b-instruct",
   "precision": "fp8",
-  "gpu_ids": [1],
+  "gpu_ids": [
+    1
+  ],
   "base_url": "http://localhost:8000",
   "extra_args": {
-    "--enable-prefix-caching": "true",
-    "--enable-chunked-prefill": "false",
+    "--enable-prefix-caching": "",
+    "--no-enable-chunked-prefill": "",
     "--max-num-seqs": "64",
     "--gpu-memory-utilization": "0.60",
     "--max-model-len": "32768"

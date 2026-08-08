@@ -1,10 +1,4 @@
-"""HTTP client for sending single conversation turns to a local OpenAI-compatible server.
-
-Responsibilities:
-- Build a reusable httpx.AsyncClient with appropriate connection limits.
-- Stream a chat-completion request and record high-resolution timestamps.
-- Return a TurnResult without ever raising exceptions to the caller.
-"""
+"""HTTP client for single-turn streaming requests to an OpenAI-compatible server."""
 from __future__ import annotations
 
 import json
@@ -16,27 +10,24 @@ import httpx
 from agentperf.models import SamplingConfig, TurnResult
 
 
-# ── MessageTurn ────────────────────────────────────────────────────────────────
+# --- MessageTurn
 
 @dataclass
 class MessageTurn:
-    """Describes a single conversation turn to be sent to the inference server."""
-
     messages: list[dict]
     sampling: SamplingConfig
     session_id: str
     turn_id: int
     run_id: str
+    model: str = ""
 
 
-# ── Client factory ─────────────────────────────────────────────────────────────
+# --- Client factory
 
 def build_client(base_url: str, timeout_s: float = 300.0) -> httpx.AsyncClient:  # noqa: ARG001
-    """Return a configured AsyncClient.
-
-    The ``base_url`` parameter is accepted for interface symmetry but is NOT
-    bound to the returned client — pass it explicitly to ``stream_request``
-    instead so that a single client instance can fan out to multiple servers.
+    """``base_url`` is accepted for interface symmetry but is NOT bound to the returned
+    client -- pass it explicitly to ``stream_request`` so one client can fan out to
+    multiple servers.
     """
     limits = httpx.Limits(
         max_connections=256,
@@ -50,22 +41,18 @@ def build_client(base_url: str, timeout_s: float = 300.0) -> httpx.AsyncClient: 
     )
 
 
-# ── Core request function ──────────────────────────────────────────────────────
+# --- Core request function
 
 async def stream_request(
     client: httpx.AsyncClient,
     base_url: str,
     turn: MessageTurn,
 ) -> TurnResult:
-    """Send a streaming chat-completion request and record precise timestamps.
-
-    Never raises. All error conditions produce a TurnResult with appropriate
-    zero/sentinel values.
-    """
+    """Never raises. All error conditions produce a TurnResult with zero/sentinel values."""
     url = base_url.rstrip("/") + "/v1/chat/completions"
 
     payload: dict = {
-        "model": "default",  # server selects its loaded model when "default" is sent
+        "model": turn.model,
         "messages": turn.messages,
         "temperature": turn.sampling.temperature,
         "max_tokens": turn.sampling.max_tokens,
@@ -74,7 +61,6 @@ async def stream_request(
         "stream_options": {"include_usage": True},
     }
 
-    # Sentinel values before we start streaming
     first_token_ns: int = 0
     last_token_ns: int = 0
     prompt_tokens: int = -1
@@ -114,7 +100,6 @@ async def stream_request(
                 except json.JSONDecodeError:
                     continue
 
-                # Extract first-token timestamp from the first content-bearing delta
                 if first_token_ns == 0:
                     choices = chunk.get("choices") or []
                     for choice in choices:

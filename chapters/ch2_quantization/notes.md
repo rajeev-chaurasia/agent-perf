@@ -26,7 +26,7 @@ baseline (precision only); all other fields are held constant.
 - Clock lock (`nvidia-smi -lgc`) applied before server start; released in `trap EXIT ERR`.
 - 60-second warmup on `agent_deep` trace before each measured window.
 - Three measured runs per config (`for run in 1 2 3`) to assess variance.
-- Quality scored with `agentperf-score` over `quality/task_pack.json` after all runs.
+- Quality scored with `agentperf-score` over `quality/evaluation-tasks.json` after all runs.
 - Results land in `results/<config_name>/run{1,2,3}/`.
 
 ## Open Questions

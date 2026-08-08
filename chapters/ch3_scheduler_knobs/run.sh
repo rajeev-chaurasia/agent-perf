@@ -2,17 +2,17 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
-# Chapter 3 — vLLM scheduler knob sweep
+# Chapter 3 - vLLM scheduler knob sweep
 # Fixed: vLLM, Llama-3.1-8B-Instruct FP8, GPU 1
 # Each config changes exactly ONE knob vs base_8b_fp8.json
 # ---------------------------------------------------------------------------
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 AGENTPERF_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-TRACES_BUILD="${AGENTPERF_ROOT}/traces/synthetic/build"
+TRACES_DIR="${SCRIPT_DIR}/traces"
 GPU_ID=1
 # Override via environment: LOCK_MHZ=1755 ./run.sh
-LOCK_MHZ="${LOCK_MHZ:-1980}"
+LOCK_MHZ="${LOCK_MHZ:-3090}"
 REPLAY_CONCURRENCY="${REPLAY_CONCURRENCY:-8}"
 
 # ---------------------------------------------------------------------------
@@ -21,7 +21,7 @@ REPLAY_CONCURRENCY="${REPLAY_CONCURRENCY:-8}"
 mkdir -p "${SCRIPT_DIR}/results"
 
 # ---------------------------------------------------------------------------
-# Clock lock/unlock — lock BEFORE first server start, unlock on EXIT and ERR
+# Clock lock/unlock - lock BEFORE first server start, unlock on EXIT and ERR
 # ---------------------------------------------------------------------------
 _unlock_clocks() {
     echo "[trap] Restoring automatic clock management on GPU ${GPU_ID}"
@@ -35,9 +35,9 @@ sudo nvidia-smi -i "${GPU_ID}" -lgc "${LOCK_MHZ}"
 # ---------------------------------------------------------------------------
 # Build traces if not already present
 # ---------------------------------------------------------------------------
-mkdir -p "${TRACES_BUILD}"
+mkdir -p "${TRACES_DIR}"
 for preset in agent_deep agent_swarm; do
-    TRACE_FILE="${TRACES_BUILD}/${preset}.json"
+    TRACE_FILE="${TRACES_DIR}/${preset}.json"
     if [[ ! -f "${TRACE_FILE}" ]]; then
         echo "Generating trace: ${preset} -> ${TRACE_FILE}"
         agentperf-generate --preset "${preset}" --output "${TRACE_FILE}"
@@ -93,14 +93,15 @@ if field == "extra_args_flat":
     # Keys already carry the "--" prefix as stored in the JSON.
     for k, v in c["extra_args"].items():
         print(k)
-        print(str(v))
+        if v:
+            print(str(v))
 else:
     print(c[field])
 PYEOF
 }
 
 # ---------------------------------------------------------------------------
-# Main sweep — iterate over every config in configs/
+# Main sweep - iterate over every config in configs/
 # ---------------------------------------------------------------------------
 for config_file in "${SCRIPT_DIR}/configs/"*.json; do
     config_name="$(basename "${config_file}" .json)"
@@ -145,7 +146,7 @@ for config_file in "${SCRIPT_DIR}/configs/"*.json; do
         timeout "${REMAINING}" agentperf-replay \
             --mode closed_loop \
             --concurrency "${REPLAY_CONCURRENCY}" \
-            --trace "${TRACES_BUILD}/agent_deep.json" \
+            --trace "${TRACES_DIR}/agent_deep.json" \
             --base-url "${BASE_URL}" \
             --output-dir "${SCRIPT_DIR}/results/${config_name}/warmup" \
             --framework vllm \
@@ -162,7 +163,7 @@ for config_file in "${SCRIPT_DIR}/configs/"*.json; do
             agentperf-replay \
                 --mode closed_loop \
                 --concurrency "${REPLAY_CONCURRENCY}" \
-                --trace "${TRACES_BUILD}/${trace}.json" \
+                --trace "${TRACES_DIR}/${trace}.json" \
                 --base-url "${BASE_URL}" \
                 --output-dir "${SCRIPT_DIR}/results/${config_name}/run${run}_${trace}" \
                 --framework vllm \

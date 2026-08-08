@@ -6,7 +6,7 @@ import enum
 from pydantic import BaseModel, Field, model_validator
 
 
-# ── Enums ──────────────────────────────────────────────────────────────────────
+# --- Enums
 
 class Framework(str, enum.Enum):
     """Supported inference serving frameworks."""
@@ -40,7 +40,7 @@ class QAStatus(str, enum.Enum):
     FAIL = "FAIL"
 
 
-# ── Trace schema models ────────────────────────────────────────────────────────
+# --- Trace schema models
 
 class SamplingConfig(BaseModel):
     temperature: float = 0.0
@@ -72,7 +72,7 @@ class TraceSpec(BaseModel):
         return self
 
 
-# ── Measurement models ─────────────────────────────────────────────────────────
+# --- Measurement models
 
 class TurnResult(BaseModel):
     """Per-request measurement. All ns timestamps from time.monotonic_ns()."""
@@ -94,12 +94,6 @@ class GpuSample(BaseModel):
     power_w: float
     vram_used_gb: float
 
-class ServerMetrics(BaseModel):
-    cache_hit_rate: float | None = None
-    gpu_cache_usage_perc: float | None = None
-    num_running_requests: int | None = None
-    raw: dict = Field(default_factory=dict)
-
 class RunManifest(BaseModel):
     run_id: str
     timestamp_utc: str
@@ -118,7 +112,7 @@ class RunManifest(BaseModel):
     gpu_samples: list[GpuSample] = Field(default_factory=list)
 
 
-# ── Config models ──────────────────────────────────────────────────────────────
+# --- Config models
 
 class FrameworkConfig(BaseModel):
     framework: Framework
@@ -135,9 +129,10 @@ class ReplayConfig(BaseModel):
     base_url: str = "http://localhost:8000"
     output_dir: str = "results"
     run_id: str | None = None
+    model_name: str = ""
 
 
-# ── Quality models ─────────────────────────────────────────────────────────────
+# --- Quality models
 
 class TaskItem(BaseModel):
     id: str

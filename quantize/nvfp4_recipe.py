@@ -1,7 +1,7 @@
 """NVFP4 quantization recipe using TensorRT Model Optimizer (modelopt).
 
 Produces a quantised checkpoint targeting sm_120 (sm_120) GPU architecture
-for serving with TRT-LLM.
+for serving with vLLM 0.26+ on sm_120 (sm_120).
 """
 from __future__ import annotations
 

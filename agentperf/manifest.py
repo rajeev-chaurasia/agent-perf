@@ -1,8 +1,4 @@
-"""Creates, saves, and loads RunManifest.
-
-Single responsibility: manifest lifecycle (create → save → load).
-All I/O-bound public functions are async.
-"""
+"""RunManifest lifecycle: create, save, and load. All public functions are async."""
 from __future__ import annotations
 
 import asyncio
@@ -33,10 +29,9 @@ _DEFAULT_PACKAGES: list[str] = [
 ]
 
 
-# ── Private helpers (synchronous) ──────────────────────────────────────────────
+# --- Private helpers (synchronous)
 
 def _sha256_file(path: str | Path) -> str:
-    """Return the SHA-256 hex digest of the file at *path*, read in 64 KB chunks."""
     digest = hashlib.sha256()
     chunk_size = 64 * 1024  # 64 KB
     with open(path, "rb") as fh:
@@ -49,10 +44,7 @@ def _sha256_file(path: str | Path) -> str:
 
 
 def _git_sha(repo_path: str | Path) -> str:
-    """Return the short HEAD SHA of the git repo at *repo_path*.
-
-    Returns ``"unknown"`` on any error (not a git repo, git not installed, …).
-    """
+    """Returns ``"unknown"`` silently on any error (no git repo, git not installed, etc.)."""
     try:
         result = subprocess.run(
             ["git", "-C", str(repo_path), "rev-parse", "--short", "HEAD"],
@@ -66,16 +58,8 @@ def _git_sha(repo_path: str | Path) -> str:
 
 
 def _env_snapshot(package_names: list[str] | None = None) -> dict:
-    """Return a snapshot of the Python environment.
-
-    Returns::
-
-        {
-            "python": "3.11.x",
-            "packages": {"httpx": "0.27.0", ...},
-        }
-
-    Packages that are not installed get the value ``"not-installed"``.
+    """Returns ``{"python": "3.11.x", "packages": {"httpx": "0.27.0", ...}}``.
+    Uninstalled packages get the value ``"not-installed"``.
     """
     import sys
 
@@ -93,7 +77,7 @@ def _env_snapshot(package_names: list[str] | None = None) -> dict:
     }
 
 
-# ── Public async API ──────────────────────────────────────────────────────────
+# --- Public async API
 
 async def create_manifest(
     *,
@@ -110,15 +94,11 @@ async def create_manifest(
     client_cpu_pct_mean: float = -1.0,
     repo_path: str | Path = ".",
 ) -> RunManifest:
-    """Build and return a :class:`~agentperf.models.RunManifest`.
-
-    Reads *trace_path* to extract ``trace_id`` and computes its SHA-256
-    checksum.  Heavy file I/O is offloaded to a thread via
-    :func:`asyncio.to_thread` so the event loop is not blocked.
+    """File I/O (trace read, checksum, git SHA, env snapshot) is offloaded via
+    asyncio.to_thread to avoid blocking the event loop during replay.
     """
     trace_path = Path(trace_path)
 
-    # Offload blocking I/O to a thread pool worker.
     trace_text: str = await asyncio.to_thread(trace_path.read_text, encoding="utf-8")
     trace_checksum: str = await asyncio.to_thread(_sha256_file, trace_path)
 
@@ -152,11 +132,7 @@ async def create_manifest(
 
 
 async def save_manifest(manifest: RunManifest, output_dir: str | Path) -> Path:
-    """Serialise *manifest* to ``<output_dir>/<run_id>.manifest.json``.
-
-    Creates *output_dir* if it does not exist.  Returns the path of the
-    written file.
-    """
+    """Write to ``<output_dir>/<run_id>.manifest.json``, creating the directory if needed."""
     output_dir = Path(output_dir)
     await asyncio.to_thread(output_dir.mkdir, parents=True, exist_ok=True)
 
@@ -167,6 +143,5 @@ async def save_manifest(manifest: RunManifest, output_dir: str | Path) -> Path:
 
 
 async def load_manifest(path: str | Path) -> RunManifest:
-    """Deserialise a :class:`~agentperf.models.RunManifest` from *path*."""
     text: str = await asyncio.to_thread(Path(path).read_text, "utf-8")
     return RunManifest.model_validate_json(text)

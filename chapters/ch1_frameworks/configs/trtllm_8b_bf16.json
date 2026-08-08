@@ -1,11 +1,12 @@
 {
   "framework": "trtllm",
-  "model": "meta-llama/Llama-3.1-8B-Instruct",
+  "model": "models/llama-3.1-8b-instruct",
   "precision": "bf16",
   "gpu_ids": [1],
   "base_url": "http://localhost:8000",
   "extra_args": {
-    "--kv_cache_free_gpu_mem_fraction": "0.85",
-    "--max_num_tokens": "32768"
+    "--kv_cache_free_gpu_memory_fraction": "0.85",
+    "--max_num_tokens": "32768",
+    "--max_seq_len": "32768"
   }
 }

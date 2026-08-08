@@ -1,9 +1,4 @@
-"""Replay engine for agent-perf benchmarks.
-
-Loads a TraceSpec, drives an OpenAI-compatible inference server through
-closed-loop or open-loop concurrency patterns, collects per-turn latency
-measurements, and writes a Parquet result file plus a JSON run manifest.
-"""
+"""Replay engine: drives an inference server from a TraceSpec and writes Parquet + manifest."""
 from __future__ import annotations
 
 import argparse
@@ -29,15 +24,12 @@ from agentperf.models import (
 )
 
 
-# ── Content helpers ────────────────────────────────────────────────────────────
+# --- Content helpers
 
 
 def resolve_content_ref(ref: str) -> str:
-    """Resolve a content reference to its string value.
-
-    If *ref* starts with ``@``, the remainder is treated as a filesystem path
-    and its contents are returned verbatim.  This allows large prompts to be
-    stored in separate files and referenced by path inside the trace.
+    """If *ref* starts with ``@``, the remainder is a filesystem path whose contents are
+    returned verbatim, allowing large prompts to live outside the trace JSON.
     """
     if ref.startswith("@"):
         return Path(ref[1:]).read_text(encoding="utf-8")
@@ -45,13 +37,8 @@ def resolve_content_ref(ref: str) -> str:
 
 
 def build_messages(session: SessionSpec, up_to_turn_id: int) -> list[dict]:
-    """Build the OpenAI messages list for *session* up to *up_to_turn_id*.
-
-    The returned list begins with the system message derived from
-    ``session.system_prompt_ref``, followed by one user message per turn whose
-    ``turn_id`` is ``<= up_to_turn_id``.  TOOL_RESULT turns have their content
-    prefixed with ``[tool_result] `` so the model can distinguish them from
-    plain user utterances without a separate role.
+    """TOOL_RESULT turns are surfaced as user messages with a ``[tool_result] `` prefix
+    because OpenAI-compatible servers may not support a dedicated tool role.
     """
     messages: list[dict] = [
         {
@@ -64,8 +51,6 @@ def build_messages(session: SessionSpec, up_to_turn_id: int) -> list[dict]:
         if turn.turn_id > up_to_turn_id:
             break
         content = resolve_content_ref(turn.content_ref)
-        # TOOL_RESULT is surfaced as a user message with a distinguishing prefix
-        # because OpenAI-compatible servers may not support a dedicated role.
         if turn.role_sequence.value == "tool_result":
             content = f"[tool_result] {content}"
         messages.append({"role": "user", "content": content})
@@ -73,7 +58,7 @@ def build_messages(session: SessionSpec, up_to_turn_id: int) -> list[dict]:
     return messages
 
 
-# ── Shared session coroutine ───────────────────────────────────────────────────
+# --- Shared session coroutine
 
 
 async def _replay_session(
@@ -83,6 +68,7 @@ async def _replay_session(
     run_id: str,
     results: list[TurnResult],
     lock: asyncio.Lock,
+    model_name: str = "",
 ) -> None:
     """Drive a single session sequentially, respecting inter-turn think time."""
     for i, turn in enumerate(session.turns):
@@ -93,6 +79,7 @@ async def _replay_session(
             session_id=session.session_id,
             turn_id=turn.turn_id,
             run_id=run_id,
+            model=model_name,
         )
         result = await stream_request(client, base_url, mt)
         async with lock:
@@ -103,7 +90,7 @@ async def _replay_session(
             await asyncio.sleep(turn.think_time_ms / 1000)
 
 
-# ── Replay classes ─────────────────────────────────────────────────────────────
+# --- Replay classes
 
 
 class ClosedLoopReplay:
@@ -120,7 +107,6 @@ class ClosedLoopReplay:
     async def run(
         self, trace: TraceSpec, manifest_kwargs: dict
     ) -> tuple[list[TurnResult], Path]:
-        """Execute the replay and return ``(results, parquet_path)``."""
         manifest = await create_manifest(
             replay_mode=ReplayMode.CLOSED_LOOP,
             concurrency=self._config.concurrency,
@@ -138,7 +124,8 @@ class ClosedLoopReplay:
             # Hold the slot for the full session so concurrency is capped.
             async with sem:
                 await _replay_session(
-                    session, client, self._config.base_url, run_id, all_results, lock
+                    session, client, self._config.base_url, run_id, all_results, lock,
+                    model_name=self._config.model_name,
                 )
 
         tasks = [asyncio.create_task(_bounded_session(s)) for s in trace.sessions]
@@ -166,7 +153,6 @@ class OpenLoopReplay:
     async def run(
         self, trace: TraceSpec, manifest_kwargs: dict
     ) -> tuple[list[TurnResult], Path]:
-        """Execute the replay and return ``(results, parquet_path)``."""
         manifest = await create_manifest(
             replay_mode=ReplayMode.OPEN_LOOP,
             concurrency=self._config.concurrency,
@@ -186,11 +172,11 @@ class OpenLoopReplay:
         for session in trace.sessions:
             task = asyncio.create_task(
                 _replay_session(
-                    session, client, self._config.base_url, run_id, all_results, lock
+                    session, client, self._config.base_url, run_id, all_results, lock,
+                    model_name=self._config.model_name,
                 )
             )
             tasks.append(task)
-            # Stagger task creation to model the desired arrival rate.
             await asyncio.sleep(interval_s)
 
         await asyncio.gather(*tasks)
@@ -203,16 +189,14 @@ class OpenLoopReplay:
         return (all_results, parquet_path)
 
 
-# ── Result serialisation ───────────────────────────────────────────────────────
+# --- Result serialisation
 
 
 def results_to_parquet(
     results: list[TurnResult], mode: ReplayMode, run_id: str
 ) -> pd.DataFrame:
-    """Convert a list of TurnResults into a tidy DataFrame.
-
-    Latency columns are computed by the canonical metric functions to ensure
-    consistency with any downstream analysis that calls the same functions.
+    """Latency columns are computed via the canonical metric functions to stay consistent
+    with downstream analysis that calls those same functions directly.
     """
     ttft_vals = ttft_ms(results)
     itl_vals = itl_ms(results)
@@ -236,11 +220,7 @@ def results_to_parquet(
 
 
 def save_parquet(df: pd.DataFrame, output_dir: str, run_id: str) -> Path:
-    """Write *df* to ``<output_dir>/<run_id>.parquet`` with agentperf metadata.
-
-    Creates *output_dir* if it does not exist.  Returns the absolute path of
-    the written file.
-    """
+    """Write to ``<output_dir>/<run_id>.parquet``, creating the directory if needed."""
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
 
@@ -252,11 +232,10 @@ def save_parquet(df: pd.DataFrame, output_dir: str, run_id: str) -> Path:
     return dest
 
 
-# ── CLI entry point ───────────────────────────────────────────────────────────
+# --- CLI entry point
 
 
 def main() -> str:
-    """Parse CLI arguments, run the selected replay strategy, and return a sentinel."""
     parser = argparse.ArgumentParser(
         description="Replay agent traces against a local inference server."
     )
@@ -322,6 +301,7 @@ def main() -> str:
         trace_path=args.trace,
         base_url=args.base_url,
         output_dir=args.output_dir,
+        model_name=args.model,
     )
 
     trace_text = Path(args.trace).read_text(encoding="utf-8")
@@ -353,8 +333,6 @@ def main() -> str:
     console.print(
         f"[green]Done.[/green] {len(results)} turn result(s) written to {parquet_path}"
     )
-
-    return "REPLAY_DONE"
 
 
 if __name__ == "__main__":

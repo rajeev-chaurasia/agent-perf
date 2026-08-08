@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "agentperf"
 version = "0.1.0"
-requires-python = ">=3.11"
+requires-python = ">=3.11"  # tested on 3.12.3
 dependencies = [
     "httpx[http2]>=0.27",
     "pandas>=2.0",

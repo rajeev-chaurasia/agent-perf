@@ -1,7 +1,6 @@
-"""Reporting module: load Parquet results, produce plots and markdown tables.
+"""Load Parquet results and produce plots and markdown tables.
 
-All plots are saved as PNG files using a non-interactive backend so this
-module is safe to import in headless / CI environments.
+Uses a non-interactive matplotlib backend, safe for headless/CI environments.
 """
 from __future__ import annotations
 
@@ -15,7 +14,6 @@ import matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 
-# Columns every result Parquet file must contain.
 REQUIRED_COLUMNS: List[str] = [
     "session_id",
     "turn_id",
@@ -30,18 +28,13 @@ REQUIRED_COLUMNS: List[str] = [
     "replay_mode",
 ]
 
-# Type alias used throughout: (label, dataframe) pairs.
 LabeledRun = Tuple[str, pd.DataFrame]
 
 
-# ── Loaders ────────────────────────────────────────────────────────────────────
+# --- Loaders
 
 def load_run(parquet_path: str) -> pd.DataFrame:
-    """Load a single result Parquet file and validate its schema.
-
-    Raises ValueError when required columns are absent so callers get an
-    actionable message rather than a cryptic KeyError later.
-    """
+    """Raises ValueError on missing columns rather than letting a KeyError surface later."""
     df = pd.read_parquet(parquet_path)
     missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
     if missing:
@@ -52,13 +45,11 @@ def load_run(parquet_path: str) -> pd.DataFrame:
     return df
 
 
-# ── Validation helpers ─────────────────────────────────────────────────────────
+# --- Validation helpers
 
 def _check_mode_consistency(labeled_runs: List[LabeledRun]) -> None:
-    """Verify that all runs share the same replay_mode.
-
-    Mixing closed-loop and open-loop measurements in a single chart produces
-    misleading comparisons because their concurrency semantics differ.
+    """Mixing closed-loop and open-loop runs in one chart is misleading because
+    their concurrency semantics are incomparable.
     """
     modes = {
         label: df["replay_mode"].iloc[0]
@@ -74,7 +65,7 @@ def _check_mode_consistency(labeled_runs: List[LabeledRun]) -> None:
         )
 
 
-# ── Plot functions ─────────────────────────────────────────────────────────────
+# --- Plot functions
 
 def plot_goodput_vs_concurrency(
     labeled_runs: List[LabeledRun],
@@ -82,14 +73,8 @@ def plot_goodput_vs_concurrency(
     slo_ttft_ms: float = 1000.0,
     slo_itl_ms: float = 50.0,
 ) -> None:
-    """Bar/line chart of SLO-compliant token throughput for each labeled run.
-
-    Goodput counts only output tokens from requests that satisfied both the
-    TTFT SLO and the ITL SLO (itl_ms < 0 means streaming latency was not
-    measured for that row — those rows pass the ITL check automatically).
-
-    x-axis: run label (one point per concurrency level / configuration).
-    y-axis: goodput in tokens/second.
+    """Goodput counts only output tokens from requests meeting both SLOs.
+    Rows with itl_ms < 0 (streaming latency unmeasured) pass the ITL check automatically.
     """
     _check_mode_consistency(labeled_runs)
 
@@ -105,7 +90,6 @@ def plot_goodput_vs_concurrency(
         compliant = df[ttft_ok & itl_ok]
 
         total_tokens = compliant["output_tokens"].sum()
-        # Wall-clock window in seconds; guard against zero division.
         window_s = df["e2e_ms"].max() / 1000.0 if not df.empty else 0.0
         goodput = total_tokens / window_s if window_s > 0 else 0.0
 
@@ -130,10 +114,8 @@ def plot_cache_hit_vs_depth(
     labeled_runs: List[LabeledRun],
     output_path: str,
 ) -> None:
-    """Line chart showing how prefix-cache hit rate evolves with turn depth.
-
-    Turn depth (turn_id) serves as a proxy for context length.  A rising
-    hit rate indicates the KV cache is being reused across sessions.
+    """turn_id is a proxy for context length; a rising hit rate means the KV cache
+    is being reused across sessions.
     """
     fig, ax = plt.subplots(figsize=(8, 5))
 
@@ -159,11 +141,7 @@ def plot_ttft_cdf(
     labeled_runs: List[LabeledRun],
     output_path: str,
 ) -> None:
-    """Empirical CDF of time-to-first-token latency for each labeled run.
-
-    Rows where ttft_ms == -1.0 (errors or non-streaming requests) are
-    excluded because they do not represent measured latencies.
-    """
+    """Rows where ttft_ms == -1.0 (errors or non-streaming) are excluded."""
     fig, ax = plt.subplots(figsize=(8, 5))
 
     for label, df in labeled_runs:
@@ -186,11 +164,8 @@ def plot_precision_ladder(
     labeled_runs: List[LabeledRun],
     output_path: str,
 ) -> None:
-    """Bar chart comparing median token throughput across precision configurations.
-
-    Only HTTP 200 rows are considered; error responses inflate e2e_ms and
-    produce zero output tokens, which would unfairly depress median figures.
-    Throughput is output_tokens / (e2e_ms / 1000) per row.
+    """Only HTTP 200 rows are used; error responses inflate e2e_ms and would
+    unfairly depress median throughput figures.
     """
     labels: List[str] = []
     median_throughputs: List[float] = []
@@ -219,18 +194,13 @@ def plot_precision_ladder(
     plt.close(fig)
 
 
-# ── Markdown table ─────────────────────────────────────────────────────────────
+# --- Markdown table
 
 def markdown_table(
     labeled_runs: List[LabeledRun],
     metrics: List[str],
 ) -> str:
-    """Produce a GitHub-Flavored Markdown table with median and p99 per metric.
-
-    Sentinel values (-1.0) are excluded before computing statistics so that
-    missing measurements do not distort aggregate percentiles.
-    """
-    # Build header: Run | metric_median | metric_p99 | …
+    """-1.0 sentinel values are excluded before computing stats to avoid distorting percentiles."""
     header_cols = ["Run"]
     for m in metrics:
         header_cols += [f"{m}_median", f"{m}_p99"]
@@ -246,7 +216,6 @@ def markdown_table(
             if m not in df.columns:
                 row_values += ["N/A", "N/A"]
                 continue
-            # Strip sentinel -1.0 values before aggregation.
             series = df.loc[df[m] != -1.0, m].dropna()
             if series.empty:
                 row_values += ["N/A", "N/A"]
@@ -259,10 +228,9 @@ def markdown_table(
     return "\n".join(rows)
 
 
-# ── CLI entry point ────────────────────────────────────────────────────────────
+# --- CLI entry point
 
 def main() -> None:
-    """Command-line interface for generating report plots and tables."""
     parser = argparse.ArgumentParser(
         description="Generate performance report plots and tables from Parquet result files.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -350,7 +318,6 @@ def main() -> None:
             output_path=str(out_dir / "precision_ladder.png"),
         )
 
-    # Always emit a summary markdown table for the primary latency metrics.
     table = markdown_table(labeled_runs, metrics=["ttft_ms", "itl_ms", "e2e_ms"])
     table_path = out_dir / "summary_table.md"
     table_path.write_text(table)

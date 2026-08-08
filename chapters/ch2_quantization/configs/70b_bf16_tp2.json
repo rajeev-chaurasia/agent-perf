@@ -1,1 +1,11 @@
-{"framework":"vllm","model":"meta-llama/Llama-3.3-70B-Instruct","precision":"bf16","gpu_ids":[0,1],"base_url":"http://localhost:8000","extra_args":{}}
+{
+  "framework": "vllm",
+  "model": "models/llama-3.3-70b-instruct",
+  "precision": "bf16",
+  "gpu_ids": [
+    0,
+    1
+  ],
+  "base_url": "http://localhost:8000",
+  "extra_args": {}
+}

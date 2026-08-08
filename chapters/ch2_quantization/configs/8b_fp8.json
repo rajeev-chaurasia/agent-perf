@@ -1,1 +1,10 @@
-{"framework":"vllm","model":"meta-llama/Llama-3.1-8B-Instruct","precision":"fp8","gpu_ids":[1],"base_url":"http://localhost:8000","extra_args":{}}
+{
+  "framework": "vllm",
+  "model": "models/llama-3.1-8b-instruct",
+  "precision": "fp8",
+  "gpu_ids": [
+    1
+  ],
+  "base_url": "http://localhost:8000",
+  "extra_args": {}
+}

@@ -1,21 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ---------------------------------------------------------------------------
-# Chapter 2: BF16 vs FP8 vs NVFP4 — 8B and 70B models
-# Measures throughput and task quality across the precision ladder.
-# ---------------------------------------------------------------------------
+# Chapter 2: BF16 vs FP8 vs NVFP4 on 8B and 70B models.
+# Measures throughput across the precision ladder using vLLM on sm_120.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 CONFIGS_DIR="${SCRIPT_DIR}/configs"
 RESULTS_DIR="${SCRIPT_DIR}/results"
-TRACE_PRESET="${REPO_ROOT}/traces/synthetic/presets/agent_deep.json"
-QUALITY_TASK_PACK="${REPO_ROOT}/quality/task_pack.json"
+TRACE_DIR="${SCRIPT_DIR}/traces"
+TRACE_PATH="${TRACE_DIR}/agent_deep.json"
+QUALITY_TASK_PACK="${REPO_ROOT}/quality/evaluation-tasks.json"
 
 WARMUP_SECONDS=60
-CLOCK_MHZ=1980        # Lock target — adjust for your GPU SKU
+CLOCK_MHZ=3090
 CONCURRENCY=8
 REPLAY_MODE="closed_loop"
 
@@ -26,7 +25,6 @@ REPLAY_MODE="closed_loop"
 die() { echo "ERROR: $*" >&2; exit 1; }
 
 gpu_ids_from_config() {
-    # Extract gpu_ids array as comma-separated string, e.g. [0,1] -> "0,1"
     python3 -c "
 import json, sys
 cfg = json.load(open('$1'))
@@ -50,14 +48,6 @@ unlock_clocks() {
         sudo nvidia-smi -i "${gpu}" -rgc
     done
     echo "[clocks] Restored auto-boost on GPU(s) ${gpu_csv}"
-}
-
-start_server() {
-    local config_file="$1"
-    echo "[server] Starting with config: ${config_file}"
-    agentperf-replay --dry-run-launch "${config_file}" &
-    SERVER_PID=$!
-    echo "[server] PID ${SERVER_PID}"
 }
 
 stop_server() {
@@ -88,7 +78,7 @@ run_replay() {
     local output_subdir="$2"
     local label="$3"
 
-    local framework model precision base_url gpu_csv
+    local framework model precision base_url
     framework=$(python3 -c "import json; c=json.load(open('${config_file}')); print(c['framework'])")
     model=$(python3 -c "import json; c=json.load(open('${config_file}')); print(c['model'])")
     precision=$(python3 -c "import json; c=json.load(open('${config_file}')); print(c['precision'])")
@@ -99,7 +89,7 @@ run_replay() {
     agentperf-replay \
         --mode "${REPLAY_MODE}" \
         --concurrency "${CONCURRENCY}" \
-        --trace "${TRACE_PRESET}" \
+        --trace "${TRACE_PATH}" \
         --base-url "${base_url}" \
         --output-dir "${output_subdir}" \
         --framework "${framework}" \
@@ -132,20 +122,16 @@ run_config() {
     echo " Prec:   ${precision}  |  GPUs: ${gpu_csv}"
     echo "========================================================"
 
-    # ---- Clock lock BEFORE server start --------------------------------
     lock_clocks "${gpu_csv}"
-
-    # Guarantee unlock on any exit from this function
     trap "unlock_clocks '${gpu_csv}'; stop_server" EXIT ERR
 
-    # ---- Launch server -------------------------------------------------
     CUDA_VISIBLE_DEVICES="${gpu_csv}" \
     python3 -m vllm.entrypoints.openai.api_server \
         --model "${model}" \
         --port 8000 \
         --tensor-parallel-size "$(echo "${gpu_csv}" | tr ',' '\n' | wc -l)" \
         $(
-            if [[ "${precision}" == "fp8" ]]; then echo "--quantization fp8"; fi
+            if [[ "${precision}" == "fp8" ]];   then echo "--quantization fp8"; fi
             if [[ "${precision}" == "nvfp4" ]]; then echo "--quantization nvfp4"; fi
         ) \
         >> "${RESULTS_DIR}/${config_name}_server.log" 2>&1 &
@@ -153,43 +139,38 @@ run_config() {
 
     wait_for_health "${base_url}"
 
-    # ---- Warmup (60 s of traffic, results discarded) -------------------
-    echo "[warmup] Running ${WARMUP_SECONDS}s warmup on agent_deep ..."
+    echo "[warmup] Running ${WARMUP_SECONDS}s warmup ..."
     local warmup_dir
     warmup_dir="$(mktemp -d)"
     timeout "${WARMUP_SECONDS}" agentperf-replay \
         --mode "${REPLAY_MODE}" \
         --concurrency "${CONCURRENCY}" \
-        --trace "${TRACE_PRESET}" \
+        --trace "${TRACE_PATH}" \
         --base-url "${base_url}" \
         --output-dir "${warmup_dir}" \
         --framework "${framework}" \
         --model "${model}" \
         --precision "${precision}" \
-        || true   # timeout exit code is fine here
+        || true
     rm -rf "${warmup_dir}"
     echo "[warmup] Done."
 
-    # ---- Measured runs -------------------------------------------------
     for run in 1 2 3; do
         echo "[run ${run}/3] Measuring ${config_name} ..."
         local run_dir="${RESULTS_DIR}/${config_name}/run${run}"
         mkdir -p "${run_dir}"
-
         run_replay "${config_file}" "${run_dir}" "${config_name}/run${run}"
     done
 
-    # ---- Quality scoring -----------------------------------------------
-    echo "[quality] Scoring ${config_name} ..."
-    agentperf-score \
-        --task-pack "${QUALITY_TASK_PACK}" \
-        --responses-dir "${RESULTS_DIR}/${config_name}"
+    # Quality scoring requires a responses JSONL produced by a separate
+    # model-output collection step (not yet implemented in this script).
+    # When ready:
+    #   agentperf-score --task-pack "${QUALITY_TASK_PACK}" \
+    #       --responses "${RESULTS_DIR}/${config_name}/responses.jsonl" \
+    #       --output "${RESULTS_DIR}/${config_name}/score.json"
 
-    # ---- Teardown ------------------------------------------------------
     stop_server
     unlock_clocks "${gpu_csv}"
-
-    # Reset trap to avoid double-unlock on the next iteration
     trap - EXIT ERR
 
     echo "[done] ${config_name} complete."
@@ -199,7 +180,12 @@ run_config() {
 # Main
 # ---------------------------------------------------------------------------
 
-mkdir -p "${RESULTS_DIR}"
+mkdir -p "${RESULTS_DIR}" "${TRACE_DIR}"
+
+if [[ ! -f "${TRACE_PATH}" ]]; then
+    echo "[trace] Generating agent_deep trace ..."
+    agentperf-generate --preset agent_deep --output "${TRACE_PATH}"
+fi
 
 CONFIGS=(
     "${CONFIGS_DIR}/8b_bf16.json"

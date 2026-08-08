@@ -1,12 +1,8 @@
 # agent-perf
 
-Chat benchmarks miss the point for agentic deployments. Agent traffic has three distinctive
-properties: (1) deep multi-turn sessions with large shared system prompts create sustained
-prefix KV reuse pressure, (2) tool-call turns are bursty with short outputs that stress the
-scheduler differently than chat, (3) many concurrent agent sessions race for KV cache capacity.
-This suite quantifies what these differences mean for TTFT, ITL, throughput, and goodput across
-vLLM, SGLang, and TensorRT-LLM on 96 GB workstation GPU (sm_120, 96 GB) — the only public
-benchmark data on this hardware for agentic workloads.
+Reproducible benchmarks for LLM inference serving under agentic workloads. Measures TTFT, ITL, E2E latency, and goodput across vLLM, SGLang, and TensorRT-LLM on 96 GB workstation GPU (sm_120, 96 GB) -- the only public benchmark data on this hardware for multi-turn agent traffic patterns.
+
+Standard chat benchmarks (ShareGPT throughput, single-turn TTFT) miss three things that matter for agents: deep multi-turn sessions that grow KV cache pressure over time, bursty tool-call turns with short outputs, and many concurrent sessions racing for cache capacity. This suite measures all three.
 
 ---
 
@@ -15,32 +11,81 @@ benchmark data on this hardware for agentic workloads.
 | | |
 |---|---|
 | GPUs | 2x 96 GB workstation GPU, 96 GB each (sm_120, 188 SMs) |
-| Interconnect | PCIe Gen5 (no NVLink) |
-| CUDA | 13.2 |
-| GPU assignment | GPU 0: display; GPU 1: primary benchmark GPU; both GPUs used for TP=2 chapters |
+| Interconnect | PCIe Gen5, no NVLink |
+| CUDA | 13.2, driver 595.84 |
+| GPU assignment | GPU 1: benchmark (all chapters); GPU 0: display, also used for TP=2 in Ch4 |
 
 ---
 
-## Quick Start (no GPU needed for smoke test)
+## Quick start
+
+No GPU needed for the smoke test:
 
 ```bash
 pip install -e ".[dev]"
 
-python traces/synthetic/generator.py \
-    --preset agent_shallow \
-    --output smoke_trace.json
+# Generate a trace
+agentperf-generate --preset agent_shallow --output smoke.json
 
+# Start mock server
 python tests/mock_server.py &
 
+# Run replay
 agentperf-replay \
     --mode closed_loop \
-    --concurrency 2 \
-    --trace smoke_trace.json \
+    --concurrency 4 \
+    --trace smoke.json \
     --base-url http://localhost:8765 \
     --framework vllm \
     --model mock-model \
     --precision bf16
 ```
+
+To run a full chapter benchmark (GPU required):
+
+```bash
+bash chapters/ch1_frameworks/run.sh
+```
+
+See [docs/setup.md](docs/setup.md) for framework venv setup and model download.
+
+---
+
+## Chapter 1 results -- Framework comparison
+
+**Config:** Llama-3.1-8B-Instruct, BF16, single GPU, concurrency 1-128, 3 runs per point.
+
+### TTFT p50 at c=1 (single session baseline)
+
+| Framework | agent_shallow | agent_deep | agent_swarm |
+|---|---|---|---|
+| SGLang | **20 ms** | **29 ms** | **28 ms** |
+| vLLM | 23 ms | 35 ms | 33 ms |
+| TRT-LLM | 24 ms | 44 ms | 38 ms |
+
+SGLang is 10-15 ms faster to first token across every workload type at baseline concurrency.
+
+### TTFT p50 at c=128 (high concurrency)
+
+| Framework | agent_shallow | agent_deep | agent_swarm |
+|---|---|---|---|
+| SGLang | 39 ms | 47 ms | 72 ms |
+| vLLM | 49 ms | 61 ms | **204 ms** |
+| TRT-LLM | 44 ms | 60 ms | 94 ms |
+
+vLLM's scheduler stalls above c=32 on agent_swarm: TTFT grows from 33 ms to 204 ms (6x). SGLang holds at 72 ms (2.5x). For a swarm of 64+ parallel agents, vLLM produces noticeably worse first-response latency.
+
+### E2E latency at c=128, agent_swarm
+
+| Framework | E2E p50 |
+|---|---|
+| **TRT-LLM** | **983 ms** |
+| SGLang | 1662 ms |
+| vLLM | 2118 ms |
+
+TRT-LLM streams tokens faster once past the first token -- lower ITL at high load. For long streamed responses at high concurrency, TRT-LLM has the edge.
+
+Full plots and per-metric breakdowns: [docs/framework-comparison.md](docs/framework-comparison.md)
 
 ---
 
@@ -49,123 +94,83 @@ agentperf-replay \
 ```
 agent-perf/
 ├── agentperf/
-│   ├── clients.py          # HTTP client layer; streams tokens from OpenAI-compatible servers
-│   ├── collectors.py       # GPU telemetry and server-metrics polling
-│   ├── launch.py           # Framework process lifecycle (start, health-check, stop)
-│   ├── manifest.py         # Run manifest creation and serialization
-│   ├── metrics.py          # Stateless metric functions: TTFT, ITL, E2E, goodput, cache hit rate
-│   ├── models.py           # Pydantic data models shared across the whole package
-│   ├── replay.py           # Trace replay engine (closed-loop and open-loop)
-│   └── report.py           # Report generation from Parquet result files
+│   ├── clients.py        httpx streaming client, timestamp capture
+│   ├── manifest.py       run manifest with trace checksum and env snapshot
+│   ├── metrics.py        stateless metric functions (TTFT, ITL, E2E, goodput)
+│   ├── models.py         Pydantic data models shared across the package
+│   ├── replay.py         trace replay engine (closed-loop and open-loop)
+│   └── report.py         plot and markdown table generation
 ├── chapters/
-│   ├── ch1_frameworks/     # Framework comparison: vLLM vs SGLang vs TRT-LLM
-│   ├── ch2_quantization/   # Precision ladder: BF16 -> FP8 -> NVFP4
-│   ├── ch3_scheduler_knobs/# vLLM one-knob sweeps (prefix cache, chunked prefill, max-seqs, GPU mem)
-│   └── ch4_tensor_parallel/# TP=2 BF16 vs FP8 single-GPU on PCIe Gen5 without NVLink (70B)
-├── quality/
-│   ├── scorer.py           # Task quality scorer (exact match, function call, code exec)
-│   └── task_pack.json      # Evaluation task suite for pass-rate measurement
-├── quantize/
-│   ├── fp8_recipe.py       # FP8 quantization recipe
-│   └── nvfp4_recipe.py     # NVFP4 quantization recipe (sm_120 FP4 tensor cores)
-├── tests/
-│   └── mock_server.py      # FastAPI mock server for smoke tests without GPU
-├── traces/
-│   ├── baseline_chat/      # Baseline chat trace builder
-│   ├── derived/            # Derived trace utilities
-│   ├── synthetic/
-│   │   └── generator.py    # Synthetic trace generator with named presets
-│   └── schema.json         # Trace JSON schema (schema_version 1)
-├── writeup/                # Analysis notebooks and draft writeup
-├── pyproject.toml
-└── METHODOLOGY.md          # Eight rules followed for every reported result
+│   ├── ch1_frameworks/   vLLM vs SGLang vs TRT-LLM
+│   ├── ch2_quantization/ BF16 -> FP8 -> NVFP4 precision ladder
+│   ├── ch3_scheduler_knobs/  vLLM knob sweeps (prefix cache, chunked prefill, max-seqs)
+│   └── ch4_tensor_parallel/  TP=2 BF16 vs FP8 single-GPU on PCIe Gen5 (70B)
+├── docs/                 architecture, setup, metrics reference, results
+├── quality/              task quality scorer and evaluation pack
+├── quantize/             FP8 and NVFP4 quantization recipes
+├── tests/                mock server for offline smoke tests
+├── traces/               trace schema and synthetic generator
+├── scripts/              analysis and plot generation scripts
+├── ENVIRONMENTS.md       hardware specs, framework versions, model checksums
+└── METHODOLOGY.md        eight measurement rules followed for every result
 ```
 
 ---
 
-## The Four Chapters
+## Trace types
 
-### Chapter 1 — Frameworks under agent traffic
+Three workload shapes cover the agent traffic spectrum:
 
-Compares vLLM, SGLang, and TensorRT-LLM on Llama-3.1-8B-Instruct (BF16, single GPU) across
-four trace types that span the agent traffic spectrum: `baseline_chat`, `agent_shallow`,
-`agent_deep`, and `agent_swarm`. Sweeps concurrency from 1 to 128. The central questions are
-which framework extracts the most goodput from prefix KV reuse on deep-context agent traces,
-and whether SGLang's radix-cache architecture yields a measurable TTFT advantage on high
-shared-prefix workloads.
+**agent_shallow** -- 50 sessions, ~7 turns each, short back-and-forth exchanges. Closest to a standard chatbot but with multi-turn context.
 
-### Chapter 2 — The precision ladder on agent workloads
+**agent_deep** -- 20 sessions, ~23 turns each, with context that grows as tool results accumulate. By turn 15, prompts reach 8-30k tokens. Designed to stress KV cache reuse under sustained context growth.
 
-Runs both Llama-3.1-8B-Instruct and Llama-3.3-70B-Instruct through the BF16 → FP8 → NVFP4
-precision ladder, measuring throughput, latency, and task pass rate at each step. Each
-non-baseline config changes exactly one variable (precision) relative to its size-class
-baseline. Quality is scored with `agentperf-score` over `quality/task_pack.json` after every
-run, enabling a throughput-vs-quality trade-off analysis specific to multi-turn agent sessions.
-
-### Chapter 3 — Scheduler and memory knobs
-
-Holds model, framework (vLLM), and GPU fixed, then varies one knob per run: prefix caching
-on/off, chunked prefill on/off, `--max-num-seqs` (16 / 32 / 64 / 128 / 256), and
-`--gpu-memory-utilization` (0.60 / 0.75 / 0.90). Tests on `agent_deep` (20 sessions, 32 KB
-shared system prompt, 50% tool-call ratio) and `agent_swarm` (100 sessions, short bursts,
-20% tool-call ratio) to surface interactions that first-order intuition misses.
-
-### Chapter 4 — Tensor parallelism over PCIe Gen5 without NVLink
-
-Answers whether FP8 quantization on a single GPU dominates TP=2 BF16 tensor parallelism for
-70B-scale agent serving when NVLink is unavailable. The comparison holds the model
-(Llama-3.3-70B-Instruct) and endpoint fixed; the only axes of variation are precision and
-number of GPUs. Includes NCCL all-reduce bandwidth profiling and nsys CUDA traces to
-characterize the fraction of TP=2 wall time attributed to PCIe communication versus compute.
+**agent_swarm** -- 100 sessions, 3 turns each, all short. Models a fleet of agents running independent tasks in parallel. Tests scheduler fan-out and TTFT stability under high session count.
 
 ---
 
-## Key Metrics
+## Metrics
 
-| Metric | Definition | SLO |
-|---|---|---|
-| TTFT (ms) | Time from request send to first token received | < 1000 ms |
-| ITL (ms/tok) | Mean inter-token latency: (last_token − first_token) / (output_tokens − 1) | < 50 ms |
-| Goodput (tok/s) | Output tokens per second for requests meeting both TTFT and ITL SLOs | — |
-| Prefix Cache Hit Rate | Fraction of prompt tokens served from KV cache | — |
-| Task Success Rate | Pass rate on `quality/task_pack.json` (exact match, function call, code exec) | — |
+| Metric | Definition |
+|---|---|
+| TTFT | Time from request send to first token received (ms) |
+| ITL | Mean inter-token latency: (last - first token) / (output tokens - 1) (ms) |
+| E2E | Total wall time from request send to last token (ms) |
+| Goodput | Output tokens/s for requests meeting TTFT < 1000 ms and ITL < 50 ms |
 
-All latency measurements use `time.monotonic_ns()` on the client. Values reported as p50 and
-p99 across compliant (HTTP 200) requests. Error rate (HTTP non-200 fraction) is tracked
-separately and excluded from latency distributions.
-
-See `METHODOLOGY.md` for the full eight-rule protocol followed for every reported result.
+All timestamps use `time.monotonic_ns()` on the client. Stats reported as p50 and p99 across 3 measured runs after a 60-second warmup.
 
 ---
 
-## Reproducing Results
+## Reproducing results
 
-Each chapter provides a self-contained run script:
+Each chapter has a self-contained run script:
 
-```
+```bash
 chapters/ch1_frameworks/run.sh
 chapters/ch2_quantization/run.sh
 chapters/ch3_scheduler_knobs/run.sh
 chapters/ch4_tensor_parallel/run.sh
 ```
 
-Results are written to `results/<config_name>/run{1,2,3}/` as Parquet files plus JSON manifests.
-Use `agentperf-report` to generate summary tables and plots from any results directory.
+Results write to `chapters/<chapter>/results/` as Parquet files plus JSON run manifests. Generate a report from any results directory:
 
-A local GPU matching the hardware specification above is required for chapters 1–4. See
-`ENVIRONMENTS.md` for driver, CUDA, and framework version setup.
+```bash
+agentperf-report \
+    --parquet chapters/ch1_frameworks/results/vllm/agent_deep/**/*.parquet \
+    --labels ... \
+    --output-dir chapters/ch1_frameworks/results/report \
+    --plot all
+```
+
+See [METHODOLOGY.md](METHODOLOGY.md) for the eight measurement rules followed for every reported result.
 
 ---
 
-## Methodology
+## Coming chapters
 
-See `METHODOLOGY.md`. Eight rules, followed for every reported result:
-
-1. Clock frequency locked with `nvidia-smi -lgc` before server start; released on exit.
-2. Sixty-second warmup on the target trace before each measured window.
-3. Three measured runs per configuration to assess variance.
-4. One variable changed at a time relative to a documented baseline.
-5. Trace checksums recorded in the run manifest to guarantee reproducibility.
-6. Quality scored from the same task pack for every precision configuration.
-7. GPU telemetry (utilization, power, VRAM) sampled throughout each run.
-8. All raw Parquet files and manifests retained alongside reported aggregates.
+| Chapter | Topic | Status |
+|---|---|---|
+| Ch2 | Precision ladder: BF16, FP8, NVFP4 on 8B and 70B | Planned |
+| Ch3 | vLLM scheduler knobs: prefix cache, chunked prefill, max-seqs, GPU mem | Planned |
+| Ch4 | TP=2 BF16 vs single-GPU FP8 on PCIe Gen5 without NVLink (70B) | Planned |
