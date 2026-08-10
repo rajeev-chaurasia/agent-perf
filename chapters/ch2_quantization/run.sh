@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Chapter 2: BF16 vs FP8 vs NVFP4 on 8B and 70B models.
-# Measures throughput across the precision ladder using vLLM on sm_120.
+# Measures throughput across the precision ladder using vLLM.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"

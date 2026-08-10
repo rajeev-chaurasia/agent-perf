@@ -1,6 +1,6 @@
 # agent-perf
 
-Reproducible benchmarks for LLM inference serving under agentic workloads. Measures TTFT, ITL, E2E latency, and goodput across vLLM, SGLang, and TensorRT-LLM on 96 GB workstation GPU (sm_120, 96 GB) -- the only public benchmark data on this hardware for multi-turn agent traffic patterns.
+Reproducible benchmarks for LLM inference serving under agentic workloads. Measures TTFT, ITL, E2E latency, and goodput across vLLM, SGLang, and TensorRT-LLM on a 96 GB workstation GPU (sm_120), focused on multi-turn agent traffic patterns.
 
 Standard chat benchmarks (ShareGPT throughput, single-turn TTFT) miss three things that matter for agents: deep multi-turn sessions that grow KV cache pressure over time, bursty tool-call turns with short outputs, and many concurrent sessions racing for cache capacity. This suite measures all three.
 
@@ -10,7 +10,7 @@ Standard chat benchmarks (ShareGPT throughput, single-turn TTFT) miss three thin
 
 | | |
 |---|---|
-| GPUs | 2x 96 GB workstation GPU, 96 GB each (sm_120, 188 SMs) |
+| GPUs | 2x 96 GB workstation GPUs (sm_120, 188 SMs) |
 | Interconnect | PCIe Gen5, no NVLink |
 | CUDA | 13.2, driver 595.84 |
 | GPU assignment | GPU 1: benchmark (all chapters); GPU 0: display, also used for TP=2 in Ch4 |

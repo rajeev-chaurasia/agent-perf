@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| GPUs | 2x 96 GB workstation GPU, 96 GB VRAM each (sm_120, 188 SMs) |
+| GPUs | 2x 96 GB workstation GPUs (sm_120, 188 SMs) |
 | Interconnect | PCIe Gen5, no NVLink |
 | CPU | Intel Core Ultra 9 285K |
 | RAM | 125 GB |
@@ -90,7 +90,7 @@ huggingface-cli download meta-llama/Llama-3.1-8B-Instruct \
 | Qwen2.5-Coder-32B-Instruct | ~65 GB | Yes | All precisions, Ch1-Ch3 |
 | Llama-3.3-70B-Instruct | ~141 GB | No (BF16) | FP8 ~70 GB, NVFP4 ~35 GB; Ch2+ |
 
-## sm_120 (sm_120) notes
+## sm_120 notes
 
 - Flash Attention 2 is not compiled for sm_120; FlashInfer or FA3 is required.
 - NVFP4 KV-cache block scale writes: verify fix from vLLM PR #50085 is present.

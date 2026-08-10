@@ -1,6 +1,6 @@
 # Chapter 1 Results: Framework Comparison
 
-**Hardware:** 96 GB workstation GPU (sm_120, 96 GB), single GPU (GPU 1), graphics clock locked at 3090 MHz
+**Hardware:** single 96 GB GPU (sm_120), GPU 1, graphics clock locked at 3090 MHz
 **Model:** Llama-3.1-8B-Instruct, BF16
 **Sweep:** concurrency 1, 2, 4, 8, 16, 32, 64, 128 (3 independent runs per configuration)
 **Traces:** agent_shallow, agent_deep, agent_swarm
@@ -47,4 +47,4 @@ SGLang's advantage is in TTFT and tail TTFT stability, not raw decode throughput
 
 SGLang has the lowest TTFT across all three traces and all concurrency levels tested. Its TTFT growth from c=1 to c=128 is the most controlled: 2.5x on agent_swarm, roughly 2x on agent_shallow. vLLM matches SGLang closely on shallow and deep traces but exhibits a 6x TTFT inflation on agent_swarm above c=32. TRT-LLM sits between the two on TTFT but leads on E2E latency at high concurrency thanks to faster decode throughput.
 
-For a deployment on 96 GB workstation GPU running Llama-3.1-8B-Instruct at BF16 and expecting mixed agentic workloads with concurrent short sessions, SGLang is the lowest-risk choice on TTFT, and TRT-LLM is the choice if minimizing total completion time is the priority. vLLM performs well on structured workloads but warrants additional investigation before deployment under high-fan-out short-session patterns.
+For a deployment on this class of hardware running Llama-3.1-8B-Instruct at BF16 and expecting mixed agentic workloads with concurrent short sessions, SGLang is the lowest-risk choice on TTFT, and TRT-LLM is the choice if minimizing total completion time is the priority. vLLM performs well on structured workloads but warrants additional investigation before deployment under high-fan-out short-session patterns.

@@ -38,7 +38,7 @@ baseline (precision only); all other fields are held constant.
 3. Is the NVFP4 quality gap larger for 70B than 8B (smaller models may have
    less redundancy to absorb quantization noise)?
 4. What is the effective tokens-per-second-per-GPU gain of NVFP4 vs FP8 on
-   H100 SXM vs B200 — does the sm_120 FP4 tensor core advantage hold at
+   sm_90 vs sm_120 hardware: does the FP4 tensor core advantage hold at
    real agent batch sizes?
 
 ## Findings

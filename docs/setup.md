@@ -2,7 +2,7 @@
 
 ## Hardware Requirements
 
-The benchmarks in this repo target a single 96 GB workstation GPU (sm_120, sm_120, 96 GB VRAM) on PCIe Gen5. Chapter 1 runs on GPU 1 exclusively, leaving GPU 0 free for display. CUDA 13.2 and driver 595.84 or later are required. The host used for development is an Intel Core Ultra 9 285K with 125 GB RAM running Ubuntu 24.04.
+The benchmarks in this repo target a single 96 GB GPU (sm_120) on PCIe Gen5. Chapter 1 runs on GPU 1 exclusively, leaving GPU 0 free for display. CUDA 13.2 and driver 595.84 or later are required. The host used for development is an Intel Core Ultra 9 285K with 125 GB RAM running Ubuntu 24.04.
 
 Chapters that test tensor parallelism (TP=2) additionally require GPU 0 at the same clock settings.
 
@@ -68,7 +68,7 @@ Lock the graphics clock before starting any measurement. Without this, boost clo
 sudo nvidia-smi -i 1 -lgc 3090
 ```
 
-The max stable graphics clock on the 96 GB workstation GPU is 3090 MHz. The `run.sh` scripts call this automatically and register a cleanup trap to release the lock (`sudo nvidia-smi -rgc`) on exit or error.
+The max stable graphics clock on the benchmark GPU is 3090 MHz. The `run.sh` scripts call this automatically and register a cleanup trap to release the lock (`sudo nvidia-smi -rgc`) on exit or error.
 
 ## Smoke Test
 

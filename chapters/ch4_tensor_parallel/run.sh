@@ -9,7 +9,7 @@ set -euo pipefail
 BASE_CLOCK="${BASE_CLOCK:-}"
 if [[ -z "${BASE_CLOCK}" ]]; then
     echo "ERROR: BASE_CLOCK is not set. Export it before running:" >&2
-    echo "  export BASE_CLOCK=<MHz>  # e.g. 3090 for 96 GB workstation GPU" >&2
+    echo "  export BASE_CLOCK=<MHz>  # e.g. 3090" >&2
     exit 1
 fi
 

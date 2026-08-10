@@ -5,14 +5,14 @@
 | | FP8 | NVFP4 |
 |---|---|---|
 | Scheme | W8A8 static | Block-FP4 weights |
-| Target hardware | Hopper / Ada (sm_89+) | sm_120 (sm_120) |
+| Target hardware | sm_89+ | sm_120 |
 | Serving stack | vLLM (native support) | vLLM 0.26+ (--quantization nvfp4) |
 | Compression ratio | ~2x vs BF16 | ~4x vs BF16 |
 | Quality trade-off | Good throughput/quality balance | Higher compression; minor accuracy drop |
 
 **FP8**: Uses static activation calibration (stats baked into checkpoint at quantisation time) — no per-token runtime overhead. Widely supported by vLLM without additional conversion steps.
 
-**NVFP4**: sm_120-native block-wise FP4 weight format. Served via vLLM 0.26+ on sm_120 using `--quantization nvfp4`. Yields the highest compression ratio of the two formats.
+**NVFP4**: block-wise FP4 weight format native to sm_120. Served via vLLM 0.26+ using `--quantization nvfp4`. Yields the highest compression ratio of the two formats.
 
 ## Prerequisites
 
